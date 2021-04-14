@@ -181,7 +181,7 @@ class AstroStreaming(object):
                     yield  b'--FRAME\r\nContent-Type:image/jpeg\r\nContent-Length:%d\r\n\r\n' % len(frame) + frame + b'\r\n'
     @cherrypy.expose
     def capture(self,darkframe,frames):
-     rootDir='/home/pi/AstroPhotography/Images/'
+     rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images')
      t = time.localtime()
      datestamp = time.strftime('%b-%d-%Y', t)
      timestamp = time.strftime('%b-%d-%Y_%H:%M:%S', t)
@@ -207,7 +207,7 @@ class AstroStreaming(object):
     
     @cherrypy.expose
     def captureVideo(self):
-     rootDir='/home/pi/AstroPhotography/Images/'
+     rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images')
      t = time.localtime()
      datestamp = time.strftime('%b-%d-%Y', t)
      timestamp = time.strftime('%b-%d-%Y_%H:%M:%S', t)
@@ -265,6 +265,7 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     recordingOutput=io.BytesIO()
     output = StreamingOutput()
     serveDir=os.path.dirname(os.path.abspath(__file__))
+    
     print("Current Directory" + serveDir)
     #output = picamera.PiCameraCircularIO(camera, seconds=20)
     #camera.start_recording(recordingOutput, format='mjpeg')
