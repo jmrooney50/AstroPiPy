@@ -10,131 +10,10 @@ import time
 from fractions import Fraction
 import cherrypy
 from subprocess import check_output
-from PIL import Image
+#from PIL import Image
 #Test with video stream capture
 
-PAGE="""\
-<html>
-<head>
-<title>picamera Astrophotography</title>
-</head>
-<body>
-<script>
-function AstroAction(ActionType) {
-var url="/"
-console.log(ActionType)
 
-if(ActionType=="LightFrame")
-{
-url='/capture?&darkframe=False&frames=1';
-}
-else if(ActionType=="DarkFrame")
-{
-url='/capture?&darkframe=True&frames=1';
-}
-else if(ActionType=="MultiFrame")
-{
-url='/capture?&darkframe=False&frames=10';
-}
-else if (ActionType=="Video")
-{
-url='/captureVideo';
-}
-else if (ActionType=="Exposure")
-{
-url='/SetExposure?value=' + document.getElementById("ExposureMode").value;
-}
-else if (ActionType=="ISO")
-{
-url='/SetISO?value=' + document.getElementById("iso").value;
-}
-else if (ActionType=="Zoom")
-{
-url='/SetZoom?value=' + document.getElementById("zoom").value;
-}
-
-if(url!="/"){
-console.log(url)
-const Http = new XMLHttpRequest();
-document.getElementById("TakePhoto").disabled=true
-document.getElementById("TakeDarkFrame").disabled=true
-document.getElementById("TakeVideo").disabled=true
-document.getElementById("ExposureMode").disabled=true
-document.getElementById("iso").disabled=true
-document.getElementById("zoom").disabled=true
-document.getElementById("TakeMultiFrame").disabled=true
-
-Http.open("GET", url);
-Http.send();
-
-Http.onreadystatechange = (e) => {
-  console.log(Http.responseText)
-  document.getElementById("TakePhoto").disabled=false
-  document.getElementById("TakeDarkFrame").disabled=false
-document.getElementById("TakeVideo").disabled=false
-document.getElementById("ExposureMode").disabled=false
-document.getElementById("iso").disabled=false
-document.getElementById("zoom").disabled=false
-document.getElementById("TakeMultiFrame").disabled=false
-}
-
-}
-
-}
-
-
-
-</script>
-<h1>Astrophotography</h1>
-<div><table><tr><td>
-<div width="80%">
-<img src="stream" width="100%" />
-</td><td>
-<div width="20%">
-
-<h1>Buttons</h1>
- 
-<button id="TakePhoto" type="submit" value="LightFrame" onclick="AstroAction(value)">Take Photo</button><br>
-<button id="TakeMultiFrame" type="submit" value="MultiFrame" onclick="AstroAction(value)">Take Multiple Photos</button><br>
-<button id="TakeDarkFrame" type="submit" value="DarkFrame" onclick="AstroAction(value)">Dark Frame</button><br>
-<button id="TakeVideo" type="submit" value="Video" onclick="AstroAction(value)">Take Video</button><br>
-<select name="Set ISO" id="iso" value="ISO" onchange="AstroAction('ISO')">
-<option value="0">0</option>
-<option value="100">100</option>
-<option value="200">200</option>
-<option value="400">400</option>
-<option value="800">800</option>
-</select><br><br>
-<select name="ExposureMode" id="ExposureMode" value="Exposure" onchange="AstroAction('Exposure')">
-<option value='off'>Off</option>
-<option value='auto'>Auto</option>
-<option value='night'>Night</option>
-<option value="nightpreview">Night Preview</option>
-<option value="backlight">Back Light</option>
-<option value="spotlight">Spotlight</option>
-<option value="sports">Sports</option>
-<option value="snow">Snow</option>
-<option value="beach">Beach</option>
-<option value="verylong">Very Long</option>
-<option value="fixedfps">Fixed FPS</option>
-spl<option value="antishake">Antishake</option>
-<option value="fireworks">Fireworks</option>
-</select><br>
-<select name="Set Zoom" id="zoom" value="zoom" onchange="AstroAction('Zoom')">
-<option value="0">x1</option>
-<option value="2">x2</option>
-<option value="4">x4</option>
-</select><br><br>
-<a href="/images.html">Image Files</a>
-</div></td></tr></table>
-is</div>
-</body>
-</html>
-"""
-#class AstroStreaming(object):
- #   @cherr.expose
-  #  def index(self):
-   #  return PAGE
     
 class StreamingOutput(object):
    def __init__(self):
@@ -157,8 +36,7 @@ class StreamingOutput(object):
 class AstroStreaming(object):
     @cherrypy.expose
     def index(self):
-     return PAGE
-    
+     return open('index.html')    
     @cherrypy.expose
     def stream(self):
             cherrypy.response.headers['Content-Type'] ='multipart/x-mixed-replace; boundary=FRAME'
@@ -225,6 +103,12 @@ class AstroStreaming(object):
     def SetISO(self,value):
      camera.iso=int(value)
      print(camera.iso)
+     return b'Setting ISO Value'
+
+    @cherrypy.expose
+    def SetBrightness(self,value):
+     camera.brightness=int(value)
+     print(camera.brightness)
      return b'Setting ISO Value'
     
     @cherrypy.expose
