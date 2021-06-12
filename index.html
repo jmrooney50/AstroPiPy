@@ -40,6 +40,11 @@ else if (ActionType=="BRIGHTNESS")
 {
 url='/SetBrightness?value=' + document.getElementById("brightness").value;
 }
+else if (ActionType=="QUIT")
+{
+url='/quit';
+}
+
 
 if(url!="/"){
 console.log(url)
@@ -122,6 +127,7 @@ spl<option value="antishake">Antishake</option>
 <option value="2">x2</option>
 <option value="4">x4</option>
 </select><br><br>
+<button id="QUIT" type="submit" value="QUIT" onclick="AstroAction('QUIT')">Quit</button><br>
 <a href="/images.html">Image Files</a>
 </div></td></tr></table>
 </div>

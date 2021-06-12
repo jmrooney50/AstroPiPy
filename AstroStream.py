@@ -1,7 +1,7 @@
 import io
 import picamera
 import logging
-import socketserver
+#import socketserver
 from threading import Condition
 from http import server
 import webbrowser, os, sys
@@ -12,7 +12,14 @@ import cherrypy
 from subprocess import check_output
 #from PIL import Image
 #Test with video stream capture
-
+import pygame,pigame
+from pygame.locals import *
+import os
+os.putenv('SDL_VIDEODRV','fbcon')
+os.putenv('SDL_FBDEV', '/dev/fb1')
+#os.putenv('SDL_MOUSEDRV','dummy')
+#os.putenv('SDL_MOUSEDEV','/dev/null')
+os.putenv('DISPLAY','')
 
     
 class StreamingOutput(object):
@@ -50,7 +57,10 @@ class AstroStreaming(object):
                     with output.condition:
                          output.condition.wait()
                          frame = output.frame
-                                      
+                    thisframe=pygame.image.load(io.BytesIO(frame))
+                    lcd.blit(thisframe,(0,0))
+                    pygame.display.update()
+                    pitft.update()                   
                     #frameBuf=io.BytesIO()
                     #imageFrame=Image.open(frame)
                     #imageFrame=imageFrame.resize((640,480))
@@ -131,6 +141,14 @@ class AstroStreaming(object):
      camera.zoom=zoomMe
      print(camera.exposure_mode)
      return b'Setting Exposure Value'
+    @cherrypy.expose
+    def quit(self):
+        camera.stop_recording()
+        pygame.quit()
+        os.putenv('DISPLAY',':0.0')
+        os.putenv('SDL_VIDEODRV','')
+        os.putenv('SDL_FBDEV', '')
+        sys.exit()   
 #class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
  #   allow_reuse_address = True
   #  daemon_threads = True
@@ -144,6 +162,12 @@ try:
     CaptureRes="640x480"
 except:
     CaptureRes="640x480"
+
+pygame.init()
+pitft = pigame.PiTft()
+lcd = pygame.display.set_mode((320, 240))
+lcd.fill((0,0,0))
+pygame.display.update()
 
 with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     recordingOutput=io.BytesIO()
@@ -175,3 +199,9 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
         
     finally:
         camera.stop_recording()
+        pygame.quit()
+        os.putenv('DISPLAY',':0.0')
+        os.putenv('SDL_VIDEODRV','')
+        os.putenv('SDL_FBDEV', '')
+        sys.exit()
+        
