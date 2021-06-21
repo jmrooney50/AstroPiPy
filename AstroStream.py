@@ -10,13 +10,13 @@ import time
 from fractions import Fraction
 import cherrypy
 from subprocess import check_output
-#from PIL import Image
+from PIL import Image
 #Test with video stream capture
 import pygame
 #pigame
 from pygame.locals import *
 import os
-from gpiozero import LED, Button
+from gpiozero import Button
 
 
 button1 = Button(17)
@@ -67,8 +67,25 @@ class StreamingOutput(object):
             with self.condition:
                          self.condition.wait()
                          frame = output.frame
-            thisframe=pygame.image.load(io.BytesIO(frame))
+             
+            text_surface = headerfont.render(myCamera.cameraActions.currentValue() + ": " + getattr(myCamera,myCamera.cameraActions.currentValue() + "Values").currentValue(), True, WHITE)
+            text_surface2 = headerfont.render(check_output(['hostname', '-I']).decode('utf-8').split(" ")[0],True,WHITE)
+                
+            rect = text_surface.get_rect(center=(50,10))
+            
+            
+            
+            #imagePIL=Image.open(io.BytesIO(frame))
+            #imagePIL.show()
+            #framePNG=io.BytesIO()
+            #imagePIL.save(framePNG,format='BMP')
+            #imagePIL.save('/home/pi/AstroPiPy/testimage',format='BMP')
+            #framePNG=framePNG.getvalue()
+            #thisframe=pygame.image.load(framePNG,'BMP')
+            thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
             lcd.blit(thisframe,(0,0))
+            lcd.blit(text_surface, (5,5))
+            lcd.blit(text_surface2, (5,225))
             pygame.display.update()
             #pitft.update()   
 
@@ -79,7 +96,7 @@ class AstroPhotography(object):
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
-        
+       
 
 
     def TakePhoto(self,darkframe,frames):
@@ -135,6 +152,15 @@ class AstroPhotography(object):
      print(camera.exposure_mode)
      return b'Setting Exposure Value'
 
+    @cherrypy.expose
+    def quitStream(self):
+        camera.close()
+        pygame.quit()
+        os.putenv('DISPLAY',':0.0')
+        os.putenv('SDL_VIDEODRV','')
+        os.putenv('SDL_FBDEV', '')
+        sys.exit()
+
 class AstroStreaming(object):
     @cherrypy.expose
     def index(self):
@@ -189,14 +215,7 @@ class AstroStreaming(object):
      print(camera.exposure_mode)
      return b'Setting Exposure Value'
     
-    @cherrypy.expose
-    def quit(self):
-        camera.stop_recording()
-        pygame.quit()
-        os.putenv('DISPLAY',':0.0')
-        os.putenv('SDL_VIDEODRV','')
-        os.putenv('SDL_FBDEV', '')
-        sys.exit()   
+
 #class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
  #   allow_reuse_address = True
   #  daemon_threads = True
@@ -219,7 +238,7 @@ pygame.display.update()
 pygame.mouse.set_visible(False)
 WHITE = (255,255,255)
 screenfont = pygame.font.Font(None, 50)
-
+headerfont=pygame.font.Font(None,20)
 
 with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     recordingOutput=io.BytesIO()
@@ -273,7 +292,7 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
              thisAction=getattr(myCamera,thisActionName)(thisActionValue)
              sleep(2)
          elif button4.is_pressed:
-             AstroStreaming.quit() 
+             myCamera.quitStream() 
          
              
          output.screen()
@@ -281,7 +300,7 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     except KeyboardInterrupt:
         pass
     finally:
-        camera.stop_recording()
+        camera.close()
         pygame.quit()
         os.putenv('DISPLAY',':0.0')
         os.putenv('SDL_VIDEODRV','')
