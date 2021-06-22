@@ -1,23 +1,19 @@
 import io
 import picamera
-import logging
-#import socketserver
+#import logging
 from threading import Condition
-from http import server
-import webbrowser, os, sys
+
+import os, sys
 from time import sleep
 import time
 from fractions import Fraction
-import cherrypy
 from subprocess import check_output
-from PIL import Image
-#Test with video stream capture
+#from PIL import Image
+
 import pygame
 #pigame
 from pygame.locals import *
-import os
 from gpiozero import Button
-
 
 button1 = Button(17)
 button2 = Button(22)
@@ -47,10 +43,8 @@ class StreamingOutput(object):
    def __init__(self):
         self.frame = None
         self.buffer = io.BytesIO()
-        #self.buffer=picamera.PiCameraCircularIO(camera, seconds=5)
         self.condition = Condition()
         self.screenon=True
-
    def write(self, buf):
         if buf.startswith(b'\xff\xd8'):
             # New frame, copy the existing buffer's content and notify all
@@ -61,31 +55,25 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
-    
-   def screen(self):
+   
+   def screen(self,thisCamera,thisScreen):
         #with self.screenon:
             with self.condition:
                          self.condition.wait()
                          frame = output.frame
              
-            text_surface = headerfont.render(myCamera.cameraActions.currentValue() + ": " + getattr(myCamera,myCamera.cameraActions.currentValue() + "Values").currentValue(), True, WHITE)
+            text_surface = headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, WHITE)
             text_surface2 = headerfont.render(check_output(['hostname', '-I']).decode('utf-8').split(" ")[0],True,WHITE)
                 
             rect = text_surface.get_rect(center=(50,10))
             
-            
-            
-            #imagePIL=Image.open(io.BytesIO(frame))
-            #imagePIL.show()
-            #framePNG=io.BytesIO()
-            #imagePIL.save(framePNG,format='BMP')
-            #imagePIL.save('/home/pi/AstroPiPy/testimage',format='BMP')
-            #framePNG=framePNG.getvalue()
-            #thisframe=pygame.image.load(framePNG,'BMP')
-            thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
-            lcd.blit(thisframe,(0,0))
-            lcd.blit(text_surface, (5,5))
-            lcd.blit(text_surface2, (5,225))
+            try:
+             thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
+            except pygame.error:
+             print(pygame.get_error())
+            thisScreen.blit(thisframe,(0,0))
+            thisScreen.blit(text_surface, (5,5))
+            thisScreen.blit(text_surface2, (5,225))
             pygame.display.update()
             #pitft.update()   
 
@@ -96,9 +84,7 @@ class AstroPhotography(object):
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
-       
-
-
+    
     def TakePhoto(self,darkframe,frames):
      rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images/Images')
      t = time.localtime()
@@ -124,74 +110,6 @@ class AstroPhotography(object):
       sleep(10)
      return b'Capturing video'
     
-    @cherrypy.expose
-    def SetISO(self,value):
-     camera.iso=int(value)
-     print(camera.iso)
-     return b'Setting ISO Value'
-
-    @cherrypy.expose
-    def SetBrightness(self,value):
-     camera.brightness=int(value)
-     print(camera.brightness)
-     return b'Setting ISO Value'
-
-    @cherrypy.expose
-    def SetZoom(self,value):
-     if int(value)==0:
-         zoomMe=[0,0,1,1]
-     elif int(value)==2:
-         zoomMe=[0.25,0.25,0.5,0.5]
-     elif int(value)==4:
-         zoomMe=[0.375,0.375,0.25,0.25]
-     else:
-         zoomMe=[0,0,0.25,0.25]
-     print(value)
-     print(zoomMe)
-     camera.zoom=zoomMe
-     print(camera.exposure_mode)
-     return b'Setting Exposure Value'
-
-    @cherrypy.expose
-    def quitStream(self):
-        camera.close()
-        pygame.quit()
-        os.putenv('DISPLAY',':0.0')
-        os.putenv('SDL_VIDEODRV','')
-        os.putenv('SDL_FBDEV', '')
-        sys.exit()
-
-class AstroStreaming(object):
-    @cherrypy.expose
-    def index(self):
-     return open('index.html')    
-    @cherrypy.expose
-    def stream(self):
-            cherrypy.response.headers['Content-Type'] ='multipart/x-mixed-replace; boundary=FRAME'
-    
-            return self.content()
-    stream._cp_config = {'response.stream': True}     
-
-    def content(self):           
-             while True:
-                    with output.condition:
-                         output.condition.wait()
-                         frame = output.frame
-                    #thisframe=pygame.image.load(io.BytesIO(frame))
-                    #lcd.blit(thisframe,(0,0))
-                    #pygame.display.update()
-                    #pitft.update()                   
-                    
-                    yield  b'--FRAME\r\nContent-Type:image/jpeg\r\nContent-Length:%d\r\n\r\n' % len(frame) + frame + b'\r\n'
-    
-    
-    @cherrypy.expose
-    def capture(self,darkframe,frames):
-     AstroPhotography.TakePhoto(darkframe,frames) 
-     #camera.exposure_mode = 'auto'
-     return b'Capturing photo'
-    
-    @cherrypy.expose
     def captureVideo(self):
      rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images/Images')
      t = time.localtime()
@@ -207,20 +125,42 @@ class AstroStreaming(object):
      camera.wait_recording(20)
      camera.stop_recording(splitter_port=1)
      return b'Capturing video'
+     
+    
+    def SetISO(self,value):
+     camera.iso=int(value)
+     print(camera.iso)
+     return b'Setting ISO Value'
+    
+    def SetBrightness(self,value):
+     camera.brightness=int(value)
+     print(camera.brightness)
+     return b'Setting ISO Value'
 
     
-    @cherrypy.expose
-    def SetExposure(self,value):
-     camera.exposure_mode=value
+    def SetZoom(self,value):
+     if int(value)==0:
+         zoomMe=[0,0,1,1]
+     elif int(value)==2:
+         zoomMe=[0.25,0.25,0.5,0.5]
+     elif int(value)==4:
+         zoomMe=[0.375,0.375,0.25,0.25]
+     else:
+         zoomMe=[0,0,0.25,0.25]
+     print(value)
+     print(zoomMe)
+     camera.zoom=zoomMe
      print(camera.exposure_mode)
      return b'Setting Exposure Value'
     
-
-#class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
- #   allow_reuse_address = True
-  #  daemon_threads = True
-def startupBrowser(chrome_path):
-    webbrowser.get(chrome_path).open("http://localhost:8080")
+    def quitStream(self):
+        camera.close()
+        pygame.quit()
+        os.putenv('DISPLAY',':0.0')
+        os.putenv('SDL_VIDEODRV','')
+        os.putenv('SDL_FBDEV', '')
+        sys.exit()
+   
 #resolution='3280x2464', 
 try:
  if sys.argv[1]=="HighRes":
@@ -229,7 +169,7 @@ try:
     CaptureRes="640x480"
 except:
     CaptureRes="640x480"
-
+print("Capture Resolution: " + CaptureRes)
 pygame.init()
 #pitft = pigame.PiTft()
 lcd = pygame.display.set_mode((320, 240))
@@ -240,14 +180,14 @@ WHITE = (255,255,255)
 screenfont = pygame.font.Font(None, 50)
 headerfont=pygame.font.Font(None,20)
 
+print("Starting Camera")
 with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
-    recordingOutput=io.BytesIO()
+    
+    print("Create Stream")
     output = StreamingOutput()
     serveDir=os.path.dirname(os.path.abspath(__file__))
     
     print("Current Directory" + serveDir)
-    #output = picamera.PiCameraCircularIO(camera, seconds=20)
-    #camera.start_recording(recordingOutput, format='mjpeg')
     camera.start_recording(output, format='mjpeg',splitter_port=2,resize=(320,240))
     
     #camera.wait_recording(1)
@@ -255,24 +195,11 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     #camera.iso =100
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
-        #address = ('', 8080)
-        #server = StreamingServer(address, StreamingHandler)
-        cherrypy.config.update({'server.socket_host':IP})
-        cherrypy.config.update({'/images': {'tools.staticdir.on':True,
-                                'tools.staticdir.dir':os.path.join(serveDir,'Images')}})
-         #                       #'tools.staticdir.index':'images.html'}})        
-        #conf={'server.socket_host':IP,
-              #                  '/images': {'tools.staticdir.on':True,
-                   #             'tools.staticdir.dir':os.path.join(serveDir,'Images'),
-                     #           'tools.staticdir.index':'images.html'}}
-       # cherrypy.quickstart(AstroStreaming())
-        #server.serve_forever()
+        print("Start Camera App")
         myCamera=AstroPhotography()
-        
-
+        print("Start Streaming")
         while True:
-         
-         #if pitft.Button1:
+         output.screen(myCamera,lcd)
          if button1.is_pressed:
             text_surface = screenfont.render('Taking Photo', True, WHITE)
             rect = text_surface.get_rect(center=(160,120))
@@ -293,13 +220,13 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
              sleep(2)
          elif button4.is_pressed:
              myCamera.quitStream() 
-         
-             
-         output.screen()
-         
-    except KeyboardInterrupt:
-        pass
+        
+        
+    #except KeyboardInterrupt:
+    except: 
+        print(sys.exec_info()[0])
     finally:
+        print("Finishing")
         camera.close()
         pygame.quit()
         os.putenv('DISPLAY',':0.0')
