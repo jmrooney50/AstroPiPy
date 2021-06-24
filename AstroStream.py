@@ -1,6 +1,6 @@
 import io
 import picamera
-#import logging
+import logging
 from threading import Condition
 
 import os, sys
@@ -69,8 +69,9 @@ class StreamingOutput(object):
             
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
+             #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
             except pygame.error:
-             print(pygame.get_error())
+             logging.warning(pygame.get_error())
             thisScreen.blit(thisframe,(0,0))
             thisScreen.blit(text_surface, (5,5))
             thisScreen.blit(text_surface2, (5,225))
@@ -100,9 +101,10 @@ class AstroPhotography(object):
      #camera.shutter_speed = 6000000
      #camera.exposure_mode = 'off'
      #camera.iso=100
-     print('Called TakePhoto')
+     logging.info('Called TakePhoto')
      for i in range(1,totalFrames+1,1):
       sleep(5)
+      logging.info("Taking Photo %s of %s",str(i),str(totalFrames))
       if totalFrames>1:
          camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
       else:
@@ -129,12 +131,12 @@ class AstroPhotography(object):
     
     def SetISO(self,value):
      camera.iso=int(value)
-     print(camera.iso)
+     logging.info('Setting ISO %s' , camera.iso)
      return b'Setting ISO Value'
     
     def SetBrightness(self,value):
      camera.brightness=int(value)
-     print(camera.brightness)
+     logging.info('Setting Brightness %s' , camera.brightness)
      return b'Setting ISO Value'
 
     
@@ -147,11 +149,10 @@ class AstroPhotography(object):
          zoomMe=[0.375,0.375,0.25,0.25]
      else:
          zoomMe=[0,0,0.25,0.25]
-     print(value)
-     print(zoomMe)
+     
      camera.zoom=zoomMe
-     print(camera.exposure_mode)
-     return b'Setting Exposure Value'
+     
+     return b'Setting Zoom'
     
     def quitStream(self):
         camera.close()
@@ -169,7 +170,11 @@ try:
     CaptureRes="640x480"
 except:
     CaptureRes="640x480"
-print("Capture Resolution: " + CaptureRes)
+
+     
+logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
+logging.basicConfig(filename='AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
+logging.info("Capture Resolution: %s" , CaptureRes)
 pygame.init()
 #pitft = pigame.PiTft()
 lcd = pygame.display.set_mode((320, 240))
@@ -180,14 +185,14 @@ WHITE = (255,255,255)
 screenfont = pygame.font.Font(None, 50)
 headerfont=pygame.font.Font(None,20)
 
-print("Starting Camera")
+logging.info("Starting Camera")
 with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     
-    print("Create Stream")
+    logging.info("Create Stream")
     output = StreamingOutput()
     serveDir=os.path.dirname(os.path.abspath(__file__))
     
-    print("Current Directory" + serveDir)
+    logging.info("Current Directory %s" , serveDir)
     camera.start_recording(output, format='mjpeg',splitter_port=2,resize=(320,240))
     
     #camera.wait_recording(1)
@@ -195,9 +200,9 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     #camera.iso =100
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
-        print("Start Camera App")
+        logging.info("Start Camera App")
         myCamera=AstroPhotography()
-        print("Start Streaming")
+        logging.info("Start Streaming")
         while True:
          output.screen(myCamera,lcd)
          if button1.is_pressed:
@@ -224,9 +229,9 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
         
     #except KeyboardInterrupt:
     except: 
-        print(sys.exec_info()[0])
+        logging.warning(sys.exec_info()[0])
     finally:
-        print("Finishing")
+        logging.info("Finishing")
         camera.close()
         pygame.quit()
         os.putenv('DISPLAY',':0.0')
