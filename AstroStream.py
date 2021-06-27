@@ -15,16 +15,6 @@ import pygame
 from pygame.locals import *
 from gpiozero import Button
 
-button1 = Button(17)
-button2 = Button(22)
-button3 = Button(23)
-button4 = Button(27)
-
-os.putenv('SDL_VIDEODRV','fbcon')
-os.putenv('SDL_FBDEV', '/dev/fb1')
-#os.putenv('SDL_MOUSEDRV','dummy')
-#os.putenv('SDL_MOUSEDEV','/dev/null')
-os.putenv('DISPLAY','')
 
 class optionList():
     def __init__(self,values,startindex):
@@ -45,6 +35,9 @@ class StreamingOutput(object):
         self.buffer = io.BytesIO()
         self.condition = Condition()
         self.screenon=True
+        self.WHITE = (255,255,255)
+        self.screenfont = pygame.font.Font(None, 50)
+        self.headerfont=pygame.font.Font(None,20)
    def write(self, buf):
         if buf.startswith(b'\xff\xd8'):
             # New frame, copy the existing buffer's content and notify all
@@ -58,12 +51,13 @@ class StreamingOutput(object):
    
    def screen(self,thisCamera,thisScreen):
         #with self.screenon:
+        
             with self.condition:
                          self.condition.wait()
-                         frame = output.frame
+                         frame = self.frame
              
-            text_surface = headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, WHITE)
-            text_surface2 = headerfont.render(check_output(['hostname', '-I']).decode('utf-8').split(" ")[0],True,WHITE)
+            text_surface = self.headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
+            text_surface2 = self.headerfont.render(check_output(['hostname', '-I']).decode('utf-8').split(" ")[0],True,self.WHITE)
                 
             rect = text_surface.get_rect(center=(50,10))
             
@@ -75,16 +69,20 @@ class StreamingOutput(object):
             thisScreen.blit(thisframe,(0,0))
             thisScreen.blit(text_surface, (5,5))
             thisScreen.blit(text_surface2, (5,225))
-            pygame.display.update()
+            try:
+             pygame.display.update()
+            except pygame.error:
+             logging.warning(pygame.get_error())
             #pitft.update()   
 
 class AstroPhotography(object):
 
-    def __init__(self):
+    def __init__(self,camera):
         self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom"],0)
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
+        self.camera=camera
     
     def TakePhoto(self,darkframe,frames):
      rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images/Images')
@@ -106,9 +104,9 @@ class AstroPhotography(object):
       sleep(5)
       logging.info("Taking Photo %s of %s",str(i),str(totalFrames))
       if totalFrames>1:
-         camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
+         self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
       else:
-         camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
+         self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
       sleep(10)
      return b'Capturing video'
     
@@ -123,20 +121,20 @@ class AstroPhotography(object):
      #camera.wait_recording(20)
      #output.buffer.copy_to(rootDir + datestamp + '/AstroShot' + timestamp +'.mjpeg',first_frame=None)
      #camera.exposure_mode = 'auto'
-     camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232))
-     camera.wait_recording(20)
-     camera.stop_recording(splitter_port=1)
+     self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232))
+     self.camera.wait_recording(20)
+     self.camera.stop_recording(splitter_port=1)
      return b'Capturing video'
      
     
     def SetISO(self,value):
-     camera.iso=int(value)
-     logging.info('Setting ISO %s' , camera.iso)
+     self.camera.iso=int(value)
+     logging.info('Setting ISO %s' , self.camera.iso)
      return b'Setting ISO Value'
     
     def SetBrightness(self,value):
-     camera.brightness=int(value)
-     logging.info('Setting Brightness %s' , camera.brightness)
+     self.camera.brightness=int(value)
+     logging.info('Setting Brightness %s' , self.camera.brightness)
      return b'Setting ISO Value'
 
     
@@ -150,43 +148,53 @@ class AstroPhotography(object):
      else:
          zoomMe=[0,0,0.25,0.25]
      
-     camera.zoom=zoomMe
+     self.camera.zoom=zoomMe
      
      return b'Setting Zoom'
     
     def quitStream(self):
-        camera.close()
+        self.camera.close()
         pygame.quit()
-        os.putenv('DISPLAY',':0.0')
-        os.putenv('SDL_VIDEODRV','')
-        os.putenv('SDL_FBDEV', '')
         sys.exit()
-   
-#resolution='3280x2464', 
-try:
- if sys.argv[1]=="HighRes":
-    CaptureRes="4056x3040"
- else:
-    CaptureRes="640x480"
-except:
+
+
+button1 = Button(17)
+button2 = Button(22)
+button3 = Button(23)
+button4 = Button(27)
+
+
+
+def main():
+ os.putenv('SDL_VIDEODRV','fbcon')
+ os.putenv('SDL_FBDEV', '/dev/fb1')
+ #os.putenv('SDL_MOUSEDRV','dummy')
+ #os.putenv('SDL_MOUSEDEV','/dev/null')
+ os.putenv('DISPLAY','')
+ #resolution='3280x2464', 
+ try:
+  if sys.argv[1]=="HighRes":
+     CaptureRes="4056x3040"
+  else:
+     CaptureRes="640x480"
+ except:
     CaptureRes="640x480"
 
      
-logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
-logging.basicConfig(filename='AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
-logging.info("Capture Resolution: %s" , CaptureRes)
-pygame.init()
-#pitft = pigame.PiTft()
-lcd = pygame.display.set_mode((320, 240))
-lcd.fill((0,0,0))
-pygame.display.update()
-pygame.mouse.set_visible(False)
-WHITE = (255,255,255)
-screenfont = pygame.font.Font(None, 50)
-headerfont=pygame.font.Font(None,20)
+ logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
+ logging.basicConfig(filename='./logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
+ logging.info("Capture Resolution: %s" , CaptureRes)
+ pygame.init()
+ #pitft = pigame.PiTft()
+ lcd = pygame.display.set_mode((320, 240))
+ lcd.fill((0,0,0))
+ pygame.display.update()
+ pygame.mouse.set_visible(False)
 
-logging.info("Starting Camera")
-with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
+
+
+ logging.info("Starting Camera")
+ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     
     logging.info("Create Stream")
     output = StreamingOutput()
@@ -195,25 +203,25 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     logging.info("Current Directory %s" , serveDir)
     camera.start_recording(output, format='mjpeg',splitter_port=2,resize=(320,240))
     
-    #camera.wait_recording(1)
-    #camera.shutter_speed = 6000000
-    #camera.iso =100
+    
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
         logging.info("Start Camera App")
-        myCamera=AstroPhotography()
+        myCamera=AstroPhotography(camera)
         logging.info("Start Streaming")
         while True:
+         
          output.screen(myCamera,lcd)
+         
          if button1.is_pressed:
-            text_surface = screenfont.render('Taking Photo', True, WHITE)
+            text_surface = output.screenfont.render('Taking Photo', True, output.WHITE)
             rect = text_surface.get_rect(center=(160,120))
             lcd.blit(text_surface, rect)
             pygame.display.update()
             
             myCamera.TakePhoto('false',5)
          elif button2.is_pressed:
-            text_surface = screenfont.render(myCamera.cameraActions.nextValue(), True, WHITE)
+            text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
             rect = text_surface.get_rect(center=(160,120))
             lcd.blit(text_surface, rect)
             pygame.display.update()
@@ -229,13 +237,13 @@ with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
         
     #except KeyboardInterrupt:
     except: 
-        logging.warning(sys.exec_info()[0])
+       logging.warning(sys.exec_info()[0])
     finally:
         logging.info("Finishing")
         camera.close()
         pygame.quit()
-        os.putenv('DISPLAY',':0.0')
-        os.putenv('SDL_VIDEODRV','')
-        os.putenv('SDL_FBDEV', '')
         sys.exit()
         
+
+if __name__ == "__main__":
+    main()
