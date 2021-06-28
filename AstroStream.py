@@ -182,7 +182,7 @@ def main():
 
      
  logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
- logging.basicConfig(filename='./logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
+ logging.basicConfig(filename=os.path.dirname(os.path.abspath(__file__)) + '/logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
  logging.info("Capture Resolution: %s" , CaptureRes)
  pygame.init()
  #pitft = pigame.PiTft()
@@ -209,6 +209,8 @@ def main():
         logging.info("Start Camera App")
         myCamera=AstroPhotography(camera)
         logging.info("Start Streaming")
+        #myCamera.TakePhoto('false',1)
+        time.sleep(2)
         while True:
          
          output.screen(myCamera,lcd)
@@ -235,8 +237,8 @@ def main():
              myCamera.quitStream() 
         
         
-    #except KeyboardInterrupt:
-    except: 
+    except KeyboardInterrupt:
+    #except: 
        logging.warning(sys.exec_info()[0])
     finally:
         logging.info("Finishing")
