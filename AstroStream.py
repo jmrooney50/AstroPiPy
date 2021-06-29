@@ -61,6 +61,7 @@ class StreamingOutput(object):
                 
             rect = text_surface.get_rect(center=(50,10))
             
+            
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
              #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
@@ -152,10 +153,13 @@ class AstroPhotography(object):
      
      return b'Setting Zoom'
     
-    def quitStream(self):
+    def quitStream(self,shutdown):
         self.camera.close()
         pygame.quit()
-        sys.exit()
+        if shutdown:
+            os.system("sudo shutdown -h now") ; sys.exit(0)
+        else:
+            sys.exit()
 
 
 button1 = Button(17)
@@ -234,8 +238,21 @@ def main():
              thisAction=getattr(myCamera,thisActionName)(thisActionValue)
              sleep(2)
          elif button4.is_pressed:
-             myCamera.quitStream() 
-        
+             
+                text_quit = output.headerfont.render("Quit",True,output.WHITE)
+                text_shutdown = output.headerfont.render("Shutdown",True,output.WHITE)
+                text_back = output.headerfont.render("Back",True,output.WHITE)
+                lcd.blit(text_quit, (280,50))
+                lcd.blit(text_shutdown, (245,100))
+                lcd.blit(text_back,(280,150))
+                pygame.display.update()
+                while True:
+                 if button1.is_pressed:
+                  myCamera.quitStream(False)
+                 elif button2.is_pressed:
+                  myCamera.quitStream(True)
+                 elif button3.is_pressed:
+                  break
         
     except KeyboardInterrupt:
     #except: 
