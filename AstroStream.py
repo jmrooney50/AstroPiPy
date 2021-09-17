@@ -231,7 +231,7 @@ def main():
             logging.info("Checking Capture Mode")
             if myCamera.SetCaptureValues.currentValue()=="Photo":
              logging.info("taking Photos")
-             myCamera.TakePhoto('false',5)
+             myCamera.TakePhoto('false',10)
             elif myCamera.SetCaptureValues.currentValue()=="Video":
              logging.info("Taking video")
              myCamera.captureVideo()
