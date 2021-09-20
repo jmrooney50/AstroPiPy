@@ -1,2 +1,4 @@
 Images/
 logs/
+__pycache__/
+*.pyc

@@ -9,7 +9,7 @@ import time
 from fractions import Fraction
 from subprocess import check_output
 #from PIL import Image
-
+import INA219 as piHat
 import pygame
 #pigame
 from pygame.locals import *
@@ -38,6 +38,8 @@ class StreamingOutput(object):
         self.WHITE = (255,255,255)
         self.screenfont = pygame.font.Font(None, 50)
         self.headerfont=pygame.font.Font(None,20)
+        self.battery=piHat.INA219(addr=0x43)
+        
    def write(self, buf):
         if buf.startswith(b'\xff\xd8'):
             # New frame, copy the existing buffer's content and notify all
@@ -57,7 +59,7 @@ class StreamingOutput(object):
                          frame = self.frame
              
             text_surface = self.headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
-            text_surface2 = self.headerfont.render(check_output(['hostname', '-I']).decode('utf-8').split(" ")[0],True,self.WHITE)
+            text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
                 
             rect = text_surface.get_rect(center=(50,10))
             
