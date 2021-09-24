@@ -125,9 +125,14 @@ class AstroPhotography(object):
      #camera.wait_recording(20)
      #output.buffer.copy_to(rootDir + datestamp + '/AstroShot' + timestamp +'.mjpeg',first_frame=None)
      #camera.exposure_mode = 'auto'
-     self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232))
-     self.camera.wait_recording(20)
-     self.camera.stop_recording(splitter_port=1)
+     try:
+      self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232),splitter_port=1)
+      logging.info('Video Recording in progress')
+      self.camera.wait_recording(20,splitter_port=1)
+      self.camera.stop_recording(splitter_port=1)
+      logging.info('Video Recording finished')
+     except self.camera.exc.PiCameraError as e:
+      logging.warning(str(e))
      return b'Capturing video'
      
     
