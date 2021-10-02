@@ -126,9 +126,10 @@ class AstroPhotography(object):
      #output.buffer.copy_to(rootDir + datestamp + '/AstroShot' + timestamp +'.mjpeg',first_frame=None)
      #camera.exposure_mode = 'auto'
      try:
-      self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232),splitter_port=1)
+      #self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',resize=(1640,1232),splitter_port=1)
+      self.camera.start_recording(rootDir + datestamp + '/AstroShot' + timestamp +'.h264',format='h264',splitter_port=1)   
       logging.info('Video Recording in progress')
-      self.camera.wait_recording(20,splitter_port=1)
+      self.camera.wait_recording(60,splitter_port=1)
       self.camera.stop_recording(splitter_port=1)
       logging.info('Video Recording finished')
      except self.camera.exc.PiCameraError as e:
@@ -186,7 +187,8 @@ def main():
  #resolution='3280x2464', 
  try:
   if sys.argv[1]=="HighRes":
-     CaptureRes="4056x3040"
+     #CaptureRes="4056x3040"
+      CaptureRes="1640x1232"
   else:
      CaptureRes="640x480"
  except:
