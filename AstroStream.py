@@ -194,7 +194,8 @@ def main():
  except:
     CaptureRes="640x480"
 
-     
+ os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images'),exist_ok=True)
+ os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'logs'),exist_ok=True)
  logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
  logging.basicConfig(filename=os.path.dirname(os.path.abspath(__file__)) + '/logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
  logging.info("Capture Resolution: %s" , CaptureRes)
