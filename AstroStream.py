@@ -247,7 +247,7 @@ def main():
              myCamera.captureVideo()
             elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
              logging.info("taking dark frame")
-             myCamera.TakePhoto('true',1)
+             myCamera.TakePhoto(True,1)
              
          elif button2.is_pressed:
             text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
