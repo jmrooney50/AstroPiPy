@@ -85,7 +85,7 @@ class AstroPhotography(object):
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
-        self.SetCaptureValues=optionList(["Photo","Video"],0)
+        self.SetCaptureValues=optionList(["Photo","Video","DarkFrame"],0)
         self.camera=camera
     
     def TakePhoto(self,darkframe,frames):
@@ -245,6 +245,9 @@ def main():
             elif myCamera.SetCaptureValues.currentValue()=="Video":
              logging.info("Taking video")
              myCamera.captureVideo()
+            elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
+             logging.info("taking dark frame")
+             myCamera.TakePhoto('true',1)
              
          elif button2.is_pressed:
             text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
