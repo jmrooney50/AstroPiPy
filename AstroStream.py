@@ -94,7 +94,7 @@ class AstroPhotography(object):
      datestamp = time.strftime('%b-%d-%Y', t)
      timestamp = time.strftime('%b-%d-%Y_%H:%M:%S', t)
      os.makedirs(rootDir + datestamp, exist_ok=True)
-     if darkframe=="True":
+     if darkframe==True:
          fileName="DarkFrame"
      else:
          fileName="AstroShot"
@@ -240,13 +240,13 @@ def main():
             
             logging.info("Checking Capture Mode")
             if myCamera.SetCaptureValues.currentValue()=="Photo":
-             logging.info("taking Photos")
-             myCamera.TakePhoto('false',10)
+             logging.info("Taking Photos")
+             myCamera.TakePhoto(False,10)
             elif myCamera.SetCaptureValues.currentValue()=="Video":
              logging.info("Taking video")
              myCamera.captureVideo()
             elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
-             logging.info("taking dark frame")
+             logging.info("Taking dark frame")
              myCamera.TakePhoto(True,1)
              
          elif button2.is_pressed:
