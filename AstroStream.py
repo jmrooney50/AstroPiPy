@@ -67,7 +67,7 @@ class StreamingOutput(object):
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
              if thisCamera.SetCaptureValues.currentValue()=="Camera":
-              thisframe=pygame.transform(thisframe,True,False)
+              thisframe=pygame.transform.flip(thisframe,True,True)
              #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
             except pygame.error:
              logging.warning(pygame.get_error())
