@@ -66,6 +66,8 @@ class StreamingOutput(object):
             
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
+             if thisCamera.SetCaptureValues.currentValue()=="Camera":
+              thisframe=pygame.transform(thisframe,True,False)
              #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
             except pygame.error:
              logging.warning(pygame.get_error())
@@ -85,17 +87,20 @@ class AstroPhotography(object):
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
-        self.SetCaptureValues=optionList(["Photo","Video","DarkFrame"],0)
+        self.SetCaptureValues=optionList(["Photo","Video","DarkFrame","Camera"],0)
         self.camera=camera
     
-    def TakePhoto(self,darkframe,frames):
+    def TakePhoto(self,captureType,frames):
      rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images/Images')
      t = time.localtime()
      datestamp = time.strftime('%b-%d-%Y', t)
      timestamp = time.strftime('%b-%d-%Y_%H:%M:%S', t)
      os.makedirs(rootDir + datestamp, exist_ok=True)
-     if darkframe==True:
+                
+     if captureType=="DarkFrame":
          fileName="DarkFrame"
+     elif captureType=="Camera":
+         fileName="Photo"
      else:
          fileName="AstroShot"
      totalFrames=int(frames)    
@@ -109,9 +114,10 @@ class AstroPhotography(object):
       logging.info("Taking Photo %s of %s",str(i),str(totalFrames))
       if totalFrames>1:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
+         sleep(10)
       else:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
-      sleep(10)
+           
      return b'Capturing photo'
     
     def captureVideo(self):
@@ -237,17 +243,19 @@ def main():
             rect = text_surface.get_rect(center=(160,120))
             lcd.blit(text_surface, rect)
             pygame.display.update()
-            
             logging.info("Checking Capture Mode")
             if myCamera.SetCaptureValues.currentValue()=="Photo":
              logging.info("Taking Photos")
-             myCamera.TakePhoto(False,10)
+             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),10)
             elif myCamera.SetCaptureValues.currentValue()=="Video":
              logging.info("Taking video")
              myCamera.captureVideo()
             elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
              logging.info("Taking dark frame")
-             myCamera.TakePhoto(True,1)
+             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
+            elif myCamera.SetCaptureValues.currentValue()=="Camera":
+             logging.info("Taking Photo")
+             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
              
          elif button2.is_pressed:
             text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
