@@ -51,19 +51,19 @@ class StreamingOutput(object):
             self.buffer.seek(0)
         return self.buffer.write(buf)
    
-   def screen(self,thisCamera,thisScreen):
+   def screen(self,thisCamera,thisScreen,thisMessage):
         #with self.screenon:
-        
             with self.condition:
                          self.condition.wait()
                          frame = self.frame
              
             text_surface = self.headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
-                
             rect = text_surface.get_rect(center=(50,10))
             
-            
+            if thisMessage!="":
+             msg_text_surface = self.screenfont.render(thisMessage, True, self.WHITE)
+             msg_rect = text_surface.get_rect(center=(160,120)) 
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
              if thisCamera.SetCaptureValues.currentValue()=="Camera":
@@ -74,6 +74,8 @@ class StreamingOutput(object):
             thisScreen.blit(thisframe,(0,0))
             thisScreen.blit(text_surface, (5,5))
             thisScreen.blit(text_surface2, (5,225))
+            if thisMessage!="":  
+               thisScreen.blit(msg_text_surface, msg_rect)   
             try:
              pygame.display.update()
             except pygame.error:
@@ -233,16 +235,15 @@ def main():
         #myCamera.TakePhoto('false',1)
         time.sleep(2)
         while True:
-         
-         output.screen(myCamera,lcd)
-         
+         output.screen(myCamera,lcd,"")
          if button1.is_pressed:
             logging.info("Start Capture")
             #logging.info("Start Capture")
-            text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
-            rect = text_surface.get_rect(center=(160,120))
-            lcd.blit(text_surface, rect)
-            pygame.display.update()
+            output.screen(myCamera,lcd,'Taking ' + myCamera.SetCaptureValues.currentValue())
+            #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
+            #rect = text_surface.get_rect(center=(160,120))
+            #lcd.blit(text_surface, rect)
+            #pygame.display.update()
             logging.info("Checking Capture Mode")
             if myCamera.SetCaptureValues.currentValue()=="Photo":
              logging.info("Taking Photos")
@@ -258,10 +259,11 @@ def main():
              myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
              
          elif button2.is_pressed:
-            text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
-            rect = text_surface.get_rect(center=(160,120))
-            lcd.blit(text_surface, rect)
-            pygame.display.update()
+            output.screen(myCamera,lcd,myCamera.cameraActions.nextValue())
+            #text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
+            #rect = text_surface.get_rect(center=(160,120))
+            #lcd.blit(text_surface, rect)
+            #pygame.display.update()
             sleep(2)
          elif button3.is_pressed:
              thisActionName=myCamera.cameraActions.currentValue()
@@ -288,6 +290,7 @@ def main():
         
     except KeyboardInterrupt:
     #except: 
+       print(sys.exec_info()[0])
        logging.warning(sys.exec_info()[0])
     finally:
         logging.info("Finishing")
