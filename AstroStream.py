@@ -76,7 +76,7 @@ class AstroPhotography(object):
             
             if thisMessage!="":
              msg_text_surface = self.screenfont.render(thisMessage, True, self.WHITE)
-             msg_rect = text_surface.get_rect(center=(160,120)) 
+             msg_rect = msg_text_surface.get_rect(center=(160,120)) 
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
              if self.SetCaptureValues.currentValue()=="Camera":
@@ -118,8 +118,8 @@ class AstroPhotography(object):
      for i in range(1,totalFrames+1,1):
       sleep(5)
       logging.info("Taking Photo %s of %s",str(i),str(totalFrames))
-      self.screen(f"Taking Photo {i} of {totalFrames}") 
       if totalFrames>1:
+         self.screen(f"Photo {i} of {totalFrames}")       
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
          sleep(10)
       else:
@@ -278,9 +278,9 @@ def main():
               sleep(2)
          elif button4.is_pressed:
              
-                text_quit = output.headerfont.render("Quit",True,output.WHITE)
-                text_shutdown = output.headerfont.render("Shutdown",True,output.WHITE)
-                text_back = output.headerfont.render("Back",True,output.WHITE)
+                text_quit = myCamera.headerfont.render("Quit",True,myCamera.WHITE)
+                text_shutdown = myCamera.headerfont.render("Shutdown",True,myCamera.WHITE)
+                text_back = myCamera.headerfont.render("Back",True,myCamera.WHITE)
                 lcd.blit(text_quit, (280,50))
                 lcd.blit(text_shutdown, (245,100))
                 lcd.blit(text_back,(280,150))
