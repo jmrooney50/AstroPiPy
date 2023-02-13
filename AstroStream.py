@@ -30,7 +30,7 @@ class optionList():
      return self.list[self.position]
 
 class StreamingOutput(object):
-   def __init__(self,screen):
+   def __init__(self):
         self.frame = None
         self.buffer = io.BytesIO()
         self.condition = Condition()
@@ -50,20 +50,19 @@ class StreamingOutput(object):
 
 class AstroPhotography(object):
 
-    def __init__(self,camera,screen,stream):
+    def __init__(self,camera,lcd,stream):
         self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom","SetCapture"],0)
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
         self.SetZoomValues=optionList(["0","2","4"],0)
         self.SetCaptureValues=optionList(["Photo","Video","DarkFrame","Camera"],0)
         self.camera=camera
-        self.screen=screen
+        self.lcd=lcd
         self.screenon=True
         self.WHITE = (255,255,255)
         self.screenfont = pygame.font.Font(None, 50)
         self.headerfont=pygame.font.Font(None,20)
         self.battery=piHat.INA219(addr=0x43)
-        self.screen=screen
         self.stream=stream
 
     def screen(self,thisMessage):
@@ -71,7 +70,6 @@ class AstroPhotography(object):
             with self.stream.condition:
                          self.stream.condition.wait()
                          frame = self.stream.frame
-             
             text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
             rect = text_surface.get_rect(center=(50,10))
@@ -86,11 +84,12 @@ class AstroPhotography(object):
              #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
             except pygame.error:
              logging.warning(pygame.get_error())
-            self.screen.blit(thisframe,(0,0))
-            self.screen.blit(text_surface, (5,5))
-            self.screen.blit(text_surface2, (5,225))
+
+            self.lcd.blit(thisframe,(0,0))
+            self.lcd.blit(text_surface, (5,5))
+            self.lcd.blit(text_surface2, (5,225))
             if thisMessage!="":  
-               self.screen.blit(msg_text_surface, msg_rect)   
+               self.lcd.blit(msg_text_surface, msg_rect)   
             try:
              pygame.display.update()
             except pygame.error:
@@ -119,6 +118,7 @@ class AstroPhotography(object):
      for i in range(1,totalFrames+1,1):
       sleep(5)
       logging.info("Taking Photo %s of %s",str(i),str(totalFrames))
+      self.screen(f"Taking Photo {i} of {totalFrames}") 
       if totalFrames>1:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
          sleep(10)
@@ -240,11 +240,11 @@ def main():
         #myCamera.TakePhoto('false',1)
         time.sleep(2)
         while True:
-         myCamera.screen(myCamera,"")
+         myCamera.screen("")
          if button1.is_pressed:
             logging.info("Start Capture")
             #logging.info("Start Capture")
-            output.screen(myCamera,lcd,'Taking ' + myCamera.SetCaptureValues.currentValue())
+            myCamera.screen('Taking ' + myCamera.SetCaptureValues.currentValue())
             #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
             #rect = text_surface.get_rect(center=(160,120))
             #lcd.blit(text_surface, rect)
@@ -264,7 +264,7 @@ def main():
              myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
              
          elif button2.is_pressed:
-            myCamera.screen(myCamera,lcd,myCamera.cameraActions.nextValue())
+            myCamera.screen(myCamera.cameraActions.nextValue())
             #text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
             #rect = text_surface.get_rect(center=(160,120))
             #lcd.blit(text_surface, rect)
@@ -293,8 +293,8 @@ def main():
                  elif button3.is_pressed:
                   break
         
-    except KeyboardInterrupt:
-    #except: 
+    #except KeyboardInterrupt:
+    except: 
        print(sys.exec_info()[0])
        logging.warning(sys.exec_info()[0])
     finally:
