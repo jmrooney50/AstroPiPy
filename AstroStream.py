@@ -30,15 +30,11 @@ class optionList():
      return self.list[self.position]
 
 class StreamingOutput(object):
-   def __init__(self):
+   def __init__(self,screen):
         self.frame = None
         self.buffer = io.BytesIO()
         self.condition = Condition()
-        self.screenon=True
-        self.WHITE = (255,255,255)
-        self.screenfont = pygame.font.Font(None, 50)
-        self.headerfont=pygame.font.Font(None,20)
-        self.battery=piHat.INA219(addr=0x43)
+
         
    def write(self, buf):
         if buf.startswith(b'\xff\xd8'):
@@ -51,13 +47,32 @@ class StreamingOutput(object):
             self.buffer.seek(0)
         return self.buffer.write(buf)
    
-   def screen(self,thisCamera,thisScreen,thisMessage):
+
+class AstroPhotography(object):
+
+    def __init__(self,camera,screen,stream):
+        self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom","SetCapture"],0)
+        self.SetISOValues=optionList(["100","200","400","800"],0)
+        self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
+        self.SetZoomValues=optionList(["0","2","4"],0)
+        self.SetCaptureValues=optionList(["Photo","Video","DarkFrame","Camera"],0)
+        self.camera=camera
+        self.screen=screen
+        self.screenon=True
+        self.WHITE = (255,255,255)
+        self.screenfont = pygame.font.Font(None, 50)
+        self.headerfont=pygame.font.Font(None,20)
+        self.battery=piHat.INA219(addr=0x43)
+        self.screen=screen
+        self.stream=stream
+
+    def screen(self,thisMessage):
         #with self.screenon:
-            with self.condition:
-                         self.condition.wait()
-                         frame = self.frame
+            with self.stream.condition:
+                         self.stream.condition.wait()
+                         frame = self.stream.frame
              
-            text_surface = self.headerfont.render(thisCamera.cameraActions.currentValue() + ": " + getattr(thisCamera,thisCamera.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
+            text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
             rect = text_surface.get_rect(center=(50,10))
             
@@ -66,32 +81,22 @@ class StreamingOutput(object):
              msg_rect = text_surface.get_rect(center=(160,120)) 
             try:
              thisframe=pygame.image.load(io.BytesIO(frame),'JPEG')
-             if thisCamera.SetCaptureValues.currentValue()=="Camera":
+             if self.SetCaptureValues.currentValue()=="Camera":
               thisframe=pygame.transform.flip(thisframe,True,True)
              #thisframe=pygame.image.frombuffer(io.BytesIO(frame))
             except pygame.error:
              logging.warning(pygame.get_error())
-            thisScreen.blit(thisframe,(0,0))
-            thisScreen.blit(text_surface, (5,5))
-            thisScreen.blit(text_surface2, (5,225))
+            self.screen.blit(thisframe,(0,0))
+            self.screen.blit(text_surface, (5,5))
+            self.screen.blit(text_surface2, (5,225))
             if thisMessage!="":  
-               thisScreen.blit(msg_text_surface, msg_rect)   
+               self.screen.blit(msg_text_surface, msg_rect)   
             try:
              pygame.display.update()
             except pygame.error:
              logging.warning(pygame.get_error())
             #pitft.update()   
 
-class AstroPhotography(object):
-
-    def __init__(self,camera):
-        self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom","SetCapture"],0)
-        self.SetISOValues=optionList(["100","200","400","800"],0)
-        self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
-        self.SetZoomValues=optionList(["0","2","4"],0)
-        self.SetCaptureValues=optionList(["Photo","Video","DarkFrame","Camera"],0)
-        self.camera=camera
-    
     def TakePhoto(self,captureType,frames):
      rootDir=os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images/Images')
      t = time.localtime()
@@ -220,22 +225,22 @@ def main():
  with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     
     logging.info("Create Stream")
-    output = StreamingOutput()
+    streamOutput = StreamingOutput()
     serveDir=os.path.dirname(os.path.abspath(__file__))
     
     logging.info("Current Directory %s" , serveDir)
-    camera.start_recording(output, format='mjpeg',splitter_port=2,resize=(320,240))
+    camera.start_recording(streamOutput, format='mjpeg',splitter_port=2,resize=(320,240))
     
     
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
         logging.info("Start Camera App")
-        myCamera=AstroPhotography(camera)
+        myCamera=AstroPhotography(camera,lcd,streamOutput)
         logging.info("Start Streaming")
         #myCamera.TakePhoto('false',1)
         time.sleep(2)
         while True:
-         output.screen(myCamera,lcd,"")
+         myCamera.screen(myCamera,"")
          if button1.is_pressed:
             logging.info("Start Capture")
             #logging.info("Start Capture")
@@ -259,7 +264,7 @@ def main():
              myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
              
          elif button2.is_pressed:
-            output.screen(myCamera,lcd,myCamera.cameraActions.nextValue())
+            myCamera.screen(myCamera,lcd,myCamera.cameraActions.nextValue())
             #text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
             #rect = text_surface.get_rect(center=(160,120))
             #lcd.blit(text_surface, rect)
