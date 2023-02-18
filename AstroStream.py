@@ -121,6 +121,7 @@ class AstroPhotography(object):
       if totalFrames>1:
          self.screen(f"Photo {i} of {totalFrames}")       
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
+         self.screen("Waiting") 
          sleep(10)
       else:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
