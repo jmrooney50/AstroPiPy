@@ -46,11 +46,24 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
-   
+
+
+class battery(object):
+    
+    def __init__(self,hasBattery):
+        self.hasBattery=hasBattery
+        if hasBattery:
+         self.battery=piHat.INA219(addr=0x43)
+  
+    def getBatteryPercent(self):
+        if self.hasBattery:
+         return (self.battery.getBusVoltage_V()-3)/1.2*100
+        else:
+          return 0  
 
 class AstroPhotography(object):
 
-    def __init__(self,camera,lcd,stream):
+    def __init__(self,camera,lcd,stream,battery):
         self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom","SetCapture"],0)
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
@@ -63,7 +76,7 @@ class AstroPhotography(object):
         self.screenfont = pygame.font.Font(None, 50)
         self.headerfont=pygame.font.Font(None,20)
         #self.battery=piHat.INA219(addr=0x43)
-        self.battery=None
+        self.battery=battery
         self.stream=stream
 
     def screen(self,thisMessage):
@@ -72,8 +85,8 @@ class AstroPhotography(object):
                          self.stream.condition.wait()
                          frame = self.stream.frame
             text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
-            if self.battery:
-             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
+            if self.battery.hasBattery:
+             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent),True,self.WHITE)
             else:
              text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
             rect = text_surface.get_rect(center=(50,10))
@@ -207,6 +220,7 @@ def main():
       button2 = Button(22)
       button3 = Button(23)
       button4 = Button(27)
+      sysBattery=battery(False)
  else:
       os.putenv('SDL_VIDEODRV','fbcon')
       os.putenv('SDL_FBDEV', '/dev/fb1')
@@ -215,6 +229,7 @@ def main():
       button2 = Button(22)
       button3 = Button(23)
       button4 = Button(27)
+      sysBattery=battery(True)
  try:
   if sys.argv[1]=="HighRes":
      #CaptureRes="4056x3040"
@@ -255,7 +270,7 @@ def main():
     try:
         logging.info("Start Camera App")
         try:
-         myCamera=AstroPhotography(camera,lcd,streamOutput)
+         myCamera=AstroPhotography(camera,lcd,streamOutput,sysBattery)
         except Exception as e:
          logging.warning(str(e))
         logging.info("Start Streaming")
