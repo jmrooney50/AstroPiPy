@@ -62,7 +62,8 @@ class AstroPhotography(object):
         self.WHITE = (255,255,255)
         self.screenfont = pygame.font.Font(None, 50)
         self.headerfont=pygame.font.Font(None,20)
-        self.battery=piHat.INA219(addr=0x43)
+        #self.battery=piHat.INA219(addr=0x43)
+        self.battery=None
         self.stream=stream
 
     def screen(self,thisMessage):
@@ -71,7 +72,10 @@ class AstroPhotography(object):
                          self.stream.condition.wait()
                          frame = self.stream.frame
             text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
-            text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
+            if self.battery:
+             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
+            else:
+             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
             rect = text_surface.get_rect(center=(50,10))
             
             if thisMessage!="":
@@ -121,8 +125,9 @@ class AstroPhotography(object):
       if totalFrames>1:
          self.screen(f"Photo {i} of {totalFrames}")       
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
+         sleep(2)
          self.screen("Waiting") 
-         sleep(10)
+         sleep(8)
       else:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
            
@@ -185,24 +190,37 @@ class AstroPhotography(object):
             sys.exit()
 
 
-button1 = Button(17)
-button2 = Button(22)
-button3 = Button(23)
-button4 = Button(27)
+
 
 
 
 def main():
- os.putenv('SDL_VIDEODRV','fbcon')
- os.putenv('SDL_FBDEV', '/dev/fb1')
+
  #os.putenv('SDL_MOUSEDRV','dummy')
  #os.putenv('SDL_MOUSEDEV','/dev/null')
- os.putenv('DISPLAY','')
+ 
  #resolution='3280x2464', 
+ 
+ if sys.argv[1]=="Testing":
+      os.putenv('SDL_VIDEODRV','fbcon')
+      button1 = Button(17)
+      button2 = Button(22)
+      button3 = Button(23)
+      button4 = Button(27)
+ else:
+      os.putenv('SDL_VIDEODRV','fbcon')
+      os.putenv('SDL_FBDEV', '/dev/fb1')
+      os.putenv('DISPLAY','')
+      button1 = Button(17)
+      button2 = Button(22)
+      button3 = Button(23)
+      button4 = Button(27)
  try:
   if sys.argv[1]=="HighRes":
      #CaptureRes="4056x3040"
-      CaptureRes="1640x1232"
+     CaptureRes="1640x1232"
+
+ 
   else:
      CaptureRes="640x480"
  except:
@@ -236,12 +254,18 @@ def main():
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
         logging.info("Start Camera App")
-        myCamera=AstroPhotography(camera,lcd,streamOutput)
+        try:
+         myCamera=AstroPhotography(camera,lcd,streamOutput)
+        except Exception as e:
+         logging.warning(str(e))
         logging.info("Start Streaming")
         #myCamera.TakePhoto('false',1)
         time.sleep(2)
         while True:
-         myCamera.screen("")
+         try:
+          myCamera.screen("")
+         except Exception as e:
+          logging.warning(str(e))
          if button1.is_pressed:
             logging.info("Start Capture")
             #logging.info("Start Capture")
