@@ -327,13 +327,18 @@ def main():
             #rect = text_surface.get_rect(center=(160,120))
             #lcd.blit(text_surface, rect)
             #pygame.display.update()
-            sleep(2)
+            while button2.is_pressed:
+             myCamera.screen(myCamera.cameraActions.currentValue())
+             sleep(1)
          elif button3.is_pressed:
              thisActionName=myCamera.cameraActions.currentValue()
              thisActionValue=getattr(myCamera,thisActionName + "Values").nextValue()
+             myCamera.screen("")
              if thisActionName!="SetCapture":
               thisAction=getattr(myCamera,thisActionName)(thisActionValue)
-              sleep(2)
+             while button3.is_pressed:
+              myCamera.screen("")
+              sleep(1)
          elif button4.is_pressed:
              
                 text_quit = myCamera.headerfont.render("Quit",True,myCamera.WHITE)
