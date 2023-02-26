@@ -8,12 +8,17 @@ from time import sleep
 import time
 from fractions import Fraction
 from subprocess import check_output
-#from PIL import Image
+
 import INA219 as piHat
 import pygame
 #pigame
 from pygame.locals import *
 from gpiozero import Button
+
+#For Focus estimate:
+from PIL import Image, ImageOps 
+from scipy.ndimage import gaussian_laplace
+import numpy as np
 
 
 class optionList():
@@ -84,13 +89,24 @@ class AstroPhotography(object):
             with self.stream.condition:
                          self.stream.condition.wait()
                          frame = self.stream.frame
-            text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
+            mode_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
             if self.battery.hasBattery:
-             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent),True,self.WHITE)
+             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent),True,self.WHITE)
             else:
-             text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
-            rect = text_surface.get_rect(center=(50,10))
+             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
+            rect = mode_surface.get_rect(center=(50,10))
             
+            #Focus Measure Test
+            try:
+             image_array=np.array(Image.open(io.BytesIO(frame)).convert('L'))
+             transformed=gaussian_laplace(image_array,1)
+             focusScore="{:.3f}".format(np.var(transformed))
+            except:
+             focusScore="Error"    
+            
+            
+            focusSurface=self.headerfont.render("Focus: " + str(focusScore),True,self.WHITE)
+
             if thisMessage!="":
              msg_text_surface = self.screenfont.render(thisMessage, True, self.WHITE)
              msg_rect = msg_text_surface.get_rect(center=(160,120)) 
@@ -103,8 +119,10 @@ class AstroPhotography(object):
              logging.warning(pygame.get_error())
 
             self.lcd.blit(thisframe,(0,0))
-            self.lcd.blit(text_surface, (5,5))
-            self.lcd.blit(text_surface2, (5,225))
+            self.lcd.blit(mode_surface, (5,5))
+            self.lcd.blit(IP_Battery_surface, (5,225))
+            self.lcd.blit(focusSurface, (225,225))
+            
             if thisMessage!="":  
                self.lcd.blit(msg_text_surface, msg_rect)   
             try:
