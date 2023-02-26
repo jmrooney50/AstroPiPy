@@ -100,12 +100,16 @@ class AstroPhotography(object):
             try:
              image_array=np.array(Image.open(io.BytesIO(frame)).convert('L'))
              transformed=gaussian_laplace(image_array,1)
-             focusScore="{:.3f}".format(np.var(transformed))
+             focusScore=np.var(transformed)
+             if focusScore<0.001:
+              focusScoreTxt="{:.1e}".format(focusScore)
+             else:
+              focusScoreTxt="{:.3f}".format(focusScore)
             except:
              focusScore="Error"    
             
             
-            focusSurface=self.headerfont.render("Focus: " + str(focusScore),True,self.WHITE)
+            focusSurface=self.headerfont.render("Focus: " + focusScoreTxt,True,self.WHITE)
 
             if thisMessage!="":
              msg_text_surface = self.screenfont.render(thisMessage, True, self.WHITE)
