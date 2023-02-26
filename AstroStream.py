@@ -62,7 +62,7 @@ class battery(object):
   
     def getBatteryPercent(self):
         if self.hasBattery:
-         return (self.battery.getBusVoltage_V()-3)/1.2*100
+          return (self.battery.getBusVoltage_V()-3)/1.2*100
         else:
           return 0  
 
@@ -91,7 +91,7 @@ class AstroPhotography(object):
                          frame = self.stream.frame
             mode_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
             if self.battery.hasBattery:
-             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent),True,self.WHITE)
+             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent()),True,self.WHITE)
             else:
              IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
             rect = mode_surface.get_rect(center=(50,10))
