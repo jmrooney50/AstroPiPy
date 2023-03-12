@@ -19,7 +19,13 @@ from gpiozero import Button
 from PIL import Image, ImageOps 
 from scipy.ndimage import gaussian_laplace
 import numpy as np
+import re
+from bluezero import microbit
 
+piBlueAddress=re.findall("BD Address: ([^\s]+)",check_output(['hciconfig']).decode('utf-8'))[0]
+bitBlueAddress=re.findall("Device ([^\s]+) BBC micro:bit",check_output(['bluetoothctl','devices']).decode('utf-8'))[0]
+
+ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
 
 class optionList():
     def __init__(self,values,startindex):
@@ -242,6 +248,7 @@ def main():
       button2 = Button(22)
       button3 = Button(23)
       button4 = Button(27)
+      photoBatch=2
       sysBattery=battery(False)
  else:
       os.putenv('SDL_VIDEODRV','fbcon')
@@ -251,6 +258,7 @@ def main():
       button2 = Button(22)
       button3 = Button(23)
       button4 = Button(27)
+      photoBatch=10
       sysBattery=battery(True)
  try:
   if sys.argv[1]=="HighRes":
@@ -274,8 +282,11 @@ def main():
  lcd.fill((0,0,0))
  pygame.display.update()
  pygame.mouse.set_visible(False)
+ 
+ logging.info("Starting Bluetooth")
+ ubit.connect()
 
-
+ 
 
  logging.info("Starting Camera")
  with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
@@ -303,7 +314,7 @@ def main():
           myCamera.screen("")
          except Exception as e:
           logging.warning(str(e))
-         if button1.is_pressed:
+         if button1.is_pressed or ubit.button_a > 0:
             logging.info("Start Capture")
             #logging.info("Start Capture")
             myCamera.screen('Taking ' + myCamera.SetCaptureValues.currentValue())
@@ -314,7 +325,7 @@ def main():
             logging.info("Checking Capture Mode")
             if myCamera.SetCaptureValues.currentValue()=="Photo":
              logging.info("Taking Photos")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),10)
+             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),photoBatch)
             elif myCamera.SetCaptureValues.currentValue()=="Video":
              logging.info("Taking video")
              myCamera.captureVideo()
@@ -367,6 +378,7 @@ def main():
     finally:
         logging.info("Finishing")
         camera.close()
+        ubit.disconnect()
         pygame.quit()
         sys.exit()
         
