@@ -25,7 +25,12 @@ from bluezero import microbit
 piBlueAddress=re.findall("BD Address: ([^\s]+)",check_output(['hciconfig']).decode('utf-8'))[0]
 bitBlueAddress=re.findall("Device ([^\s]+) BBC micro:bit",check_output(['bluetoothctl','devices']).decode('utf-8'))[0]
 
-ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
+if bitBlueAddress:
+    ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
+    microBitAvailable=True
+else:
+    microBitAvailable=False
+    
 
 class optionList():
     def __init__(self,values,startindex):
@@ -222,6 +227,43 @@ class AstroPhotography(object):
      
      return b'Setting Zoom'
     
+    def StartCapture(self,photoBatch):
+            logging.info("Start Capture")
+            #logging.info("Start Capture")
+            self.screen('Taking ' + self.SetCaptureValues.currentValue())
+            #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
+            #rect = text_surface.get_rect(center=(160,120))
+            #lcd.blit(text_surface, rect)
+            #pygame.display.update()
+            logging.info("Checking Capture Mode")
+            if self.SetCaptureValues.currentValue()=="Photo":
+             logging.info("Taking Photos")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),photoBatch)
+            elif self.SetCaptureValues.currentValue()=="Video":
+             logging.info("Taking video")
+             self.captureVideo()
+            elif self.SetCaptureValues.currentValue()=="DarkFrame":
+             logging.info("Taking dark frame")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),1)
+            elif self.SetCaptureValues.currentValue()=="Camera":
+             logging.info("Taking Photo")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),1)
+    
+    def changeCurrentAction(self):
+            self.screen(self.cameraActions.nextValue())
+           #Need to work out how this works with microbit also
+           # while button2.is_pressed:
+            # self.screen(self.cameraActions.currentValue())
+             #sleep(1)
+    
+    def changeCurrentActionValues(self):
+             thisActionName=self.cameraActions.currentValue()
+             thisActionValue=getattr(self,thisActionName + "Values").nextValue()
+             self.screen("")
+             if thisActionName!="SetCapture":
+              thisAction=getattr(self,thisActionName)(thisActionValue)
+
+             
     def quitStream(self,shutdown):
         self.camera.close()
         pygame.quit()
@@ -314,48 +356,19 @@ def main():
           myCamera.screen("")
          except Exception as e:
           logging.warning(str(e))
-         if button1.is_pressed or ubit.button_a > 0:
-            logging.info("Start Capture")
-            #logging.info("Start Capture")
-            myCamera.screen('Taking ' + myCamera.SetCaptureValues.currentValue())
-            #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
-            #rect = text_surface.get_rect(center=(160,120))
-            #lcd.blit(text_surface, rect)
-            #pygame.display.update()
-            logging.info("Checking Capture Mode")
-            if myCamera.SetCaptureValues.currentValue()=="Photo":
-             logging.info("Taking Photos")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),photoBatch)
-            elif myCamera.SetCaptureValues.currentValue()=="Video":
-             logging.info("Taking video")
-             myCamera.captureVideo()
-            elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
-             logging.info("Taking dark frame")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
-            elif myCamera.SetCaptureValues.currentValue()=="Camera":
-             logging.info("Taking Photo")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
-             
+         if button1.is_pressed:
+            myCamera.StartCapture(photoBatch)
          elif button2.is_pressed:
-            myCamera.screen(myCamera.cameraActions.nextValue())
-            #text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
-            #rect = text_surface.get_rect(center=(160,120))
-            #lcd.blit(text_surface, rect)
-            #pygame.display.update()
+            myCamera.changeCurrentActionValues()
             while button2.is_pressed:
              myCamera.screen(myCamera.cameraActions.currentValue())
              sleep(1)
          elif button3.is_pressed:
-             thisActionName=myCamera.cameraActions.currentValue()
-             thisActionValue=getattr(myCamera,thisActionName + "Values").nextValue()
-             myCamera.screen("")
-             if thisActionName!="SetCapture":
-              thisAction=getattr(myCamera,thisActionName)(thisActionValue)
-             while button3.is_pressed:
+            myCamera.changeCurrentAction()
+            while button3.is_pressed:
               myCamera.screen("")
               sleep(1)
          elif button4.is_pressed:
-             
                 text_quit = myCamera.headerfont.render("Quit",True,myCamera.WHITE)
                 text_shutdown = myCamera.headerfont.render("Shutdown",True,myCamera.WHITE)
                 text_back = myCamera.headerfont.render("Back",True,myCamera.WHITE)
@@ -370,7 +383,25 @@ def main():
                   myCamera.quitStream(True)
                  elif button3.is_pressed:
                   break
-        
+         elif microBitAvailable:
+            try:
+             if ubit.button_a > 0 and ubit.button_b < 1:
+                 try:
+                  myCamera.StartCapture(photoBatch)
+                 except Exception as e:
+                  logging.warning(str(e))
+             elif ubit.button_a > 0 and ubit.button_b > 0:
+                 try:
+                  myCamera.changeCurrentAction()
+                 except Exception as e:
+                  logging.warning(str(e))
+             elif ubit.button_a < 1 and ubit.button_b > 0:
+                 try:
+                  myCamera.changeCurrentActionValues()
+                 except Exception as e:
+                  logging.warning(str(e))
+            except Exception as e:
+                  logging.warning(str(e))
     #except KeyboardInterrupt:
     except: 
        print(sys.exec_info()[0])
