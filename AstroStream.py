@@ -402,6 +402,8 @@ def main():
                   logging.warning(str(e))
             except Exception as e:
                   logging.warning(str(e))
+                  if not ubit.connected:
+                   ubit.connect()
     #except KeyboardInterrupt:
     except: 
        print(sys.exec_info()[0])
