@@ -8,13 +8,29 @@ from time import sleep
 import time
 from fractions import Fraction
 from subprocess import check_output
-#from PIL import Image
+
 import INA219 as piHat
 import pygame
 #pigame
 from pygame.locals import *
 from gpiozero import Button
 
+#For Focus estimate:
+from PIL import Image, ImageOps 
+from scipy.ndimage import gaussian_laplace
+import numpy as np
+import re
+from bluezero import microbit
+
+piBlueAddress=re.findall("BD Address: ([^\s]+)",check_output(['hciconfig']).decode('utf-8'))[0]
+bitBlueAddress=re.findall("Device ([^\s]+) BBC micro:bit",check_output(['bluetoothctl','devices']).decode('utf-8'))[0]
+
+if bitBlueAddress:
+    ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
+    microBitAvailable=True
+else:
+    microBitAvailable=False
+    
 
 class optionList():
     def __init__(self,values,startindex):
@@ -46,11 +62,24 @@ class StreamingOutput(object):
                 self.condition.notify_all()
             self.buffer.seek(0)
         return self.buffer.write(buf)
-   
+
+
+class battery(object):
+    
+    def __init__(self,hasBattery):
+        self.hasBattery=hasBattery
+        if hasBattery:
+         self.battery=piHat.INA219(addr=0x43)
+  
+    def getBatteryPercent(self):
+        if self.hasBattery:
+          return (self.battery.getBusVoltage_V()-3)/1.2*100
+        else:
+          return 0  
 
 class AstroPhotography(object):
 
-    def __init__(self,camera,lcd,stream):
+    def __init__(self,camera,lcd,stream,battery):
         self.cameraActions=optionList(["SetISO","SetBrightness","SetZoom","SetCapture"],0)
         self.SetISOValues=optionList(["100","200","400","800"],0)
         self.SetBrightnessValues=optionList(["50","60","70","80","90"],0)
@@ -62,7 +91,8 @@ class AstroPhotography(object):
         self.WHITE = (255,255,255)
         self.screenfont = pygame.font.Font(None, 50)
         self.headerfont=pygame.font.Font(None,20)
-        self.battery=piHat.INA219(addr=0x43)
+        #self.battery=piHat.INA219(addr=0x43)
+        self.battery=battery
         self.stream=stream
 
     def screen(self,thisMessage):
@@ -70,10 +100,28 @@ class AstroPhotography(object):
             with self.stream.condition:
                          self.stream.condition.wait()
                          frame = self.stream.frame
-            text_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
-            text_surface2 = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format((self.battery.getBusVoltage_V()-3)/1.2*100),True,self.WHITE)
-            rect = text_surface.get_rect(center=(50,10))
+            mode_surface = self.headerfont.render(self.cameraActions.currentValue() + ": " + getattr(self,self.cameraActions.currentValue() + "Values").currentValue(), True, self.WHITE)
+            if self.battery.hasBattery:
+             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0] + "   Battery: {:3.1f}%".format(self.battery.getBatteryPercent()),True,self.WHITE)
+            else:
+             IP_Battery_surface = self.headerfont.render("IP: " + check_output(['hostname', '-I']  ).decode('utf-8').split(" ")[0],True,self.WHITE)
+            rect = mode_surface.get_rect(center=(50,10))
             
+            #Focus Measure Test
+            try:
+             image_array=np.array(Image.open(io.BytesIO(frame)).convert('L'))
+             transformed=gaussian_laplace(image_array,1)
+             focusScore=np.var(transformed)
+             if focusScore<0.001:
+              focusScoreTxt="{:.1e}".format(focusScore)
+             else:
+              focusScoreTxt="{:.3f}".format(focusScore)
+            except:
+             focusScore="Error"    
+            
+            
+            focusSurface=self.headerfont.render("Focus: " + focusScoreTxt,True,self.WHITE)
+
             if thisMessage!="":
              msg_text_surface = self.screenfont.render(thisMessage, True, self.WHITE)
              msg_rect = msg_text_surface.get_rect(center=(160,120)) 
@@ -86,8 +134,10 @@ class AstroPhotography(object):
              logging.warning(pygame.get_error())
 
             self.lcd.blit(thisframe,(0,0))
-            self.lcd.blit(text_surface, (5,5))
-            self.lcd.blit(text_surface2, (5,225))
+            self.lcd.blit(mode_surface, (5,5))
+            self.lcd.blit(IP_Battery_surface, (5,225))
+            self.lcd.blit(focusSurface, (225,225))
+            
             if thisMessage!="":  
                self.lcd.blit(msg_text_surface, msg_rect)   
             try:
@@ -121,8 +171,9 @@ class AstroPhotography(object):
       if totalFrames>1:
          self.screen(f"Photo {i} of {totalFrames}")       
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + 'Frame' + str(i) + '.jpg')
+         sleep(2)
          self.screen("Waiting") 
-         sleep(10)
+         sleep(8)
       else:
          self.camera.capture(rootDir + datestamp + '/' + fileName + timestamp + '.jpg')
            
@@ -176,6 +227,43 @@ class AstroPhotography(object):
      
      return b'Setting Zoom'
     
+    def StartCapture(self,photoBatch):
+            logging.info("Start Capture")
+            #logging.info("Start Capture")
+            self.screen('Taking ' + self.SetCaptureValues.currentValue())
+            #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
+            #rect = text_surface.get_rect(center=(160,120))
+            #lcd.blit(text_surface, rect)
+            #pygame.display.update()
+            logging.info("Checking Capture Mode")
+            if self.SetCaptureValues.currentValue()=="Photo":
+             logging.info("Taking Photos")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),photoBatch)
+            elif self.SetCaptureValues.currentValue()=="Video":
+             logging.info("Taking video")
+             self.captureVideo()
+            elif self.SetCaptureValues.currentValue()=="DarkFrame":
+             logging.info("Taking dark frame")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),1)
+            elif self.SetCaptureValues.currentValue()=="Camera":
+             logging.info("Taking Photo")
+             self.TakePhoto(self.SetCaptureValues.currentValue(),1)
+    
+    def changeCurrentAction(self):
+            self.screen(self.cameraActions.nextValue())
+           #Need to work out how this works with microbit also
+           # while button2.is_pressed:
+            # self.screen(self.cameraActions.currentValue())
+             #sleep(1)
+    
+    def changeCurrentActionValues(self):
+             thisActionName=self.cameraActions.currentValue()
+             thisActionValue=getattr(self,thisActionName + "Values").nextValue()
+             self.screen("")
+             if thisActionName!="SetCapture":
+              thisAction=getattr(self,thisActionName)(thisActionValue)
+
+             
     def quitStream(self,shutdown):
         self.camera.close()
         pygame.quit()
@@ -185,24 +273,41 @@ class AstroPhotography(object):
             sys.exit()
 
 
-button1 = Button(17)
-button2 = Button(22)
-button3 = Button(23)
-button4 = Button(27)
+
 
 
 
 def main():
- os.putenv('SDL_VIDEODRV','fbcon')
- os.putenv('SDL_FBDEV', '/dev/fb1')
+
  #os.putenv('SDL_MOUSEDRV','dummy')
  #os.putenv('SDL_MOUSEDEV','/dev/null')
- os.putenv('DISPLAY','')
+ 
  #resolution='3280x2464', 
+ 
+ if sys.argv[1]=="Testing":
+      os.putenv('SDL_VIDEODRV','fbcon')
+      button1 = Button(17)
+      button2 = Button(22)
+      button3 = Button(23)
+      button4 = Button(27)
+      photoBatch=2
+      sysBattery=battery(False)
+ else:
+      os.putenv('SDL_VIDEODRV','fbcon')
+      os.putenv('SDL_FBDEV', '/dev/fb1')
+      os.putenv('DISPLAY','')
+      button1 = Button(17)
+      button2 = Button(22)
+      button3 = Button(23)
+      button4 = Button(27)
+      photoBatch=10
+      sysBattery=battery(True)
  try:
   if sys.argv[1]=="HighRes":
      #CaptureRes="4056x3040"
-      CaptureRes="1640x1232"
+     CaptureRes="1640x1232"
+
+ 
   else:
      CaptureRes="640x480"
  except:
@@ -219,8 +324,11 @@ def main():
  lcd.fill((0,0,0))
  pygame.display.update()
  pygame.mouse.set_visible(False)
+ 
+ logging.info("Starting Bluetooth")
+ ubit.connect()
 
-
+ 
 
  logging.info("Starting Camera")
  with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
@@ -236,49 +344,31 @@ def main():
     IP=check_output(['hostname', '-I']).decode('utf-8').split(" ")[0]   
     try:
         logging.info("Start Camera App")
-        myCamera=AstroPhotography(camera,lcd,streamOutput)
+        try:
+         myCamera=AstroPhotography(camera,lcd,streamOutput,sysBattery)
+        except Exception as e:
+         logging.warning(str(e))
         logging.info("Start Streaming")
         #myCamera.TakePhoto('false',1)
         time.sleep(2)
         while True:
-         myCamera.screen("")
+         try:
+          myCamera.screen("")
+         except Exception as e:
+          logging.warning(str(e))
          if button1.is_pressed:
-            logging.info("Start Capture")
-            #logging.info("Start Capture")
-            myCamera.screen('Taking ' + myCamera.SetCaptureValues.currentValue())
-            #text_surface = output.screenfont.render('Taking ' + myCamera.SetCaptureValues.currentValue(), True, output.WHITE)
-            #rect = text_surface.get_rect(center=(160,120))
-            #lcd.blit(text_surface, rect)
-            #pygame.display.update()
-            logging.info("Checking Capture Mode")
-            if myCamera.SetCaptureValues.currentValue()=="Photo":
-             logging.info("Taking Photos")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),10)
-            elif myCamera.SetCaptureValues.currentValue()=="Video":
-             logging.info("Taking video")
-             myCamera.captureVideo()
-            elif myCamera.SetCaptureValues.currentValue()=="DarkFrame":
-             logging.info("Taking dark frame")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
-            elif myCamera.SetCaptureValues.currentValue()=="Camera":
-             logging.info("Taking Photo")
-             myCamera.TakePhoto(myCamera.SetCaptureValues.currentValue(),1)
-             
+            myCamera.StartCapture(photoBatch)
          elif button2.is_pressed:
-            myCamera.screen(myCamera.cameraActions.nextValue())
-            #text_surface = output.screenfont.render(myCamera.cameraActions.nextValue(), True, output.WHITE)
-            #rect = text_surface.get_rect(center=(160,120))
-            #lcd.blit(text_surface, rect)
-            #pygame.display.update()
-            sleep(2)
+            myCamera.changeCurrentActionValues()
+            while button2.is_pressed:
+             myCamera.screen(myCamera.cameraActions.currentValue())
+             sleep(1)
          elif button3.is_pressed:
-             thisActionName=myCamera.cameraActions.currentValue()
-             thisActionValue=getattr(myCamera,thisActionName + "Values").nextValue()
-             if thisActionName!="SetCapture":
-              thisAction=getattr(myCamera,thisActionName)(thisActionValue)
-              sleep(2)
+            myCamera.changeCurrentAction()
+            while button3.is_pressed:
+              myCamera.screen("")
+              sleep(1)
          elif button4.is_pressed:
-             
                 text_quit = myCamera.headerfont.render("Quit",True,myCamera.WHITE)
                 text_shutdown = myCamera.headerfont.render("Shutdown",True,myCamera.WHITE)
                 text_back = myCamera.headerfont.render("Back",True,myCamera.WHITE)
@@ -293,7 +383,27 @@ def main():
                   myCamera.quitStream(True)
                  elif button3.is_pressed:
                   break
-        
+         elif microBitAvailable:
+            try:
+             if ubit.button_a > 0 and ubit.button_b < 1:
+                 try:
+                  myCamera.StartCapture(photoBatch)
+                 except Exception as e:
+                  logging.warning(str(e))
+             elif ubit.button_a > 0 and ubit.button_b > 0:
+                 try:
+                  myCamera.changeCurrentAction()
+                 except Exception as e:
+                  logging.warning(str(e))
+             elif ubit.button_a < 1 and ubit.button_b > 0:
+                 try:
+                  myCamera.changeCurrentActionValues()
+                 except Exception as e:
+                  logging.warning(str(e))
+            except Exception as e:
+                  logging.warning(str(e))
+                  if not ubit.connected:
+                   ubit.connect()
     #except KeyboardInterrupt:
     except: 
        print(sys.exec_info()[0])
@@ -301,6 +411,7 @@ def main():
     finally:
         logging.info("Finishing")
         camera.close()
+        ubit.disconnect()
         pygame.quit()
         sys.exit()
         
