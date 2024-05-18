@@ -28,7 +28,7 @@ This will start the camera with a capture resolution of 640x480
 
 For use with the telescop use:
 
-sudo python3 /home/pi/AstroPiPy/AstroStream.py HighRes
+sudo python3 /home/pi/AstroPiPy/AstroStream.py -m HighRes
 
 This starts the camera with a capture resolution of 1660x1232, this is chosen so as to not overload the memory when video capture is underway.
 
@@ -38,7 +38,7 @@ The code can be run on startup of the Raspberry Pi by inserting a line into rc.l
 1. Run:
    1. sudo nano /etc/rc.local
 1. Add the following towards the end, but before exit 0:
-   1. sudo python3 /home/pi/AstroPiPy/AstroStream.py HighRes &
+   1. sudo python3 /home/pi/AstroPiPy/AstroStream.py -m HighRes &
 
 
 ## Optical Equipment used
