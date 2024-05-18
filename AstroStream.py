@@ -427,7 +427,8 @@ def main():
     finally:
         logging.info("Finishing")
         camera.close()
-        ubit.disconnect()
+        if ubit:
+         ubit.disconnect()
         pygame.quit()
         sys.exit()
         
