@@ -1,4 +1,4 @@
-import io
+import io 
 import picamera
 import logging
 from threading import Condition
@@ -20,17 +20,15 @@ from PIL import Image, ImageOps
 from scipy.ndimage import gaussian_laplace
 import numpy as np
 import re
-from bluezero import microbit
 
-piBlueAddress=re.findall("BD Address: ([^\s]+)",check_output(['hciconfig']).decode('utf-8'))[0]
-bitBlueAddress=re.findall("Device ([^\s]+) BBC micro:bit",check_output(['bluetoothctl','devices']).decode('utf-8'))[0]
 
-if bitBlueAddress:
-    ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
-    microBitAvailable=True
-else:
-    microBitAvailable=False
-    
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--mode","-m", help="Set mode")
+parser.add_argument("--bluetooth","-b", help="Set bluetooth on or off")
+
+   
 
 class optionList():
     def __init__(self,values,startindex):
@@ -266,6 +264,8 @@ class AstroPhotography(object):
              
     def quitStream(self,shutdown):
         self.camera.close()
+        lcd.fill((0,0,0))
+        pygame.display.update()
         pygame.quit()
         if shutdown:
             os.system("sudo shutdown -h now") ; sys.exit(0)
@@ -283,8 +283,8 @@ def main():
  #os.putenv('SDL_MOUSEDEV','/dev/null')
  
  #resolution='3280x2464', 
- 
- if sys.argv[1]=="Testing":
+ args = parser.parse_args()
+ if args.mode and args.mode=="Testing":
       os.putenv('SDL_VIDEODRV','fbcon')
       button1 = Button(17)
       button2 = Button(22)
@@ -303,7 +303,7 @@ def main():
       photoBatch=10
       sysBattery=battery(True)
  try:
-  if sys.argv[1]=="HighRes":
+  if args.mode and args.mode=="HighRes":
      #CaptureRes="4056x3040"
      CaptureRes="1640x1232"
 
@@ -312,7 +312,23 @@ def main():
      CaptureRes="640x480"
  except:
     CaptureRes="640x480"
+ 
+ if args.bluetooth and args.bluetooth=="on":
+  piBlueAddress=re.findall("BD Address: ([^\s]+)",check_output(['hciconfig']).decode('utf-8'))[0]
+  bitBlueAddress=re.findall("Device ([^\s]+) BBC micro:bit",check_output(['bluetoothctl','devices']).decode('utf-8'))[0]
+  if bitBlueAddress:
+    from bluezero import microbit
+    ubit = microbit.Microbit(adapter_addr=piBlueAddress,device_addr=bitBlueAddress)
+    microBitAvailable=True
+    logging.info("Starting Bluetooth")
+    ubit.connect()
+  else:
+    microBitAvailable=False
+    logging.info("Bluetooth requested but not configured")
 
+ else:
+  logging.info("Bluetooth not enabled")
+  microBitAvailable=False
  os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images'),exist_ok=True)
  os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'logs'),exist_ok=True)
  logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
@@ -325,11 +341,7 @@ def main():
  pygame.display.update()
  pygame.mouse.set_visible(False)
  
- logging.info("Starting Bluetooth")
- ubit.connect()
-
  
-
  logging.info("Starting Camera")
  with picamera.PiCamera(resolution=CaptureRes, framerate=24) as camera:
     
