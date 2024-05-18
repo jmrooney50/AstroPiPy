@@ -264,7 +264,7 @@ class AstroPhotography(object):
              
     def quitStream(self,shutdown):
         self.camera.close()
-        lcd.fill((0,0,0))
+        self.lcd.fill((0,0,0))
         pygame.display.update()
         pygame.quit()
         if shutdown:
