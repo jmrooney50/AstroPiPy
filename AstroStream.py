@@ -278,13 +278,14 @@ class AstroPhotography(object):
 
 
 def main():
-
+ logging.basicConfig(filename=os.path.dirname(os.path.abspath(__file__)) + '/logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
  #os.putenv('SDL_MOUSEDRV','dummy')
  #os.putenv('SDL_MOUSEDEV','/dev/null')
  
  #resolution='3280x2464', 
  args = parser.parse_args()
  if args.mode and args.mode=="Testing":
+      logging.info("Testing mode config")
       os.putenv('SDL_VIDEODRV','fbcon')
       button1 = Button(17)
       button2 = Button(22)
@@ -293,6 +294,7 @@ def main():
       photoBatch=2
       sysBattery=battery(False)
  else:
+      logging.info("Standard mode config")
       os.putenv('SDL_VIDEODRV','fbcon')
       os.putenv('SDL_FBDEV', '/dev/fb1')
       os.putenv('DISPLAY','')
@@ -305,12 +307,15 @@ def main():
  try:
   if args.mode and args.mode=="HighRes":
      #CaptureRes="4056x3040"
+     logging.info("High resolution")
      CaptureRes="1640x1232"
 
  
   else:
+     logging.info("Low resolution")
      CaptureRes="640x480"
  except:
+    logging.info("Low resolution")
     CaptureRes="640x480"
  
  if args.bluetooth and args.bluetooth=="on":
@@ -332,7 +337,6 @@ def main():
  os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'Images'),exist_ok=True)
  os.makedirs(os.path.join(os.path.dirname(os.path.abspath(__file__)),'logs'),exist_ok=True)
  logTimestamp = time.strftime('%b-%d-%Y', time.localtime())    
- logging.basicConfig(filename=os.path.dirname(os.path.abspath(__file__)) + '/logs/AstroPyPi.' + logTimestamp + '.log', level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')    
  logging.info("Capture Resolution: %s" , CaptureRes)
  pygame.init()
  #pitft = pigame.PiTft()
