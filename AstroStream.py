@@ -427,7 +427,7 @@ def main():
     finally:
         logging.info("Finishing")
         camera.close()
-        if ubit:
+        if microBitAvailable:
          ubit.disconnect()
         pygame.quit()
         sys.exit()
